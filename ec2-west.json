@@ -1,0 +1,78 @@
+{	"AWSTemplateFormatVersion":"2010-09-09",
+
+  "Description":"CFT to create amazon linux apache server",
+
+  "Parameters" : {
+    "KeyPairName": {
+      "Description" : "aws saa lab us-east-1",
+      "Type" : "AWS::EC2::KeyPair::KeyName"
+
+    },
+    "AppInstanceType": {
+      "Description": "EC2 Instance Type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues" : [
+        "t2.micro", "t2.nano"
+      ],
+      "ConstraintDescription" : "Must be a valid EC2 instance type."
+    }
+
+  },
+
+  "Mappings":{
+    "params":{
+      "association":{
+        "amiId"           : "ami-0cf6f5c8a62fa5da6"
+      },
+      "subnets": {
+        "subnet1"   : "subnet-2966c270"
+      },
+      "securityGroups":{
+        "appSG1" : "sg-07d287210d27e780c",
+        "appSG2"  : "sg-096371be6fe4d6b42"
+      }
+    }
+  },
+
+  "Resources":{
+    "amazonec2instance":{
+      "Type":"AWS::EC2::Instance",
+      "DeletionPolicy" : "Delete",
+      "Properties":{
+        "SecurityGroupIds" : [
+          {"Fn::FindInMap" : [ "params", "securityGroups", "appSG1"]},
+          {"Fn::FindInMap" : [ "params", "securityGroups", "appSG2"]}
+        ],
+        "SubnetId":{"Fn::FindInMap":["params", "subnets", "subnet1"]},
+        "ImageId":{"Fn::FindInMap":["params", "association", "amiId"]},
+        "InstanceType":{ "Ref" : "AppInstanceType" },
+        "KeyName":{"Ref":"KeyPairName"},
+        "IamInstanceProfile":"s3-admin-role",
+        "UserData":{ "Fn::Base64": { "Fn::Join": [ "", [
+          "#!/bin/bash -v \n",
+          "yum install -y httpd\n",
+          "systemctl start httpd \n",
+          "systemctl enable httpd\n",
+          "aws s3 cp s3://awssaa-lab-bucket-west/index.html /var/www/html/index.html\n",
+          "chmod -R 755 /var/www/html\n"
+
+        ]
+        ]
+        }
+        }
+
+      }
+    }
+  },
+
+
+
+  "Outputs":{
+    "WebsiteURL" : {
+      "Value" : { "Fn::Join" : ["", ["http://", { "Fn::GetAtt" : [ "amazonec2instance", "PrivateDnsName" ]}]] },
+      "Description" : "ip of newly created web server"
+    }
+
+  }
+}

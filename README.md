@@ -1,1 +1,1 @@
-# aws-saa-lab-resources
+# all the required resources to complete the labs
